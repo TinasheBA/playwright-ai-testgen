@@ -1,0 +1,29 @@
+{
+  "feature": "Short-term insurance policy lifecycle (broker portal)",
+  "criteria": [
+    {
+      "id": "AC-1",
+      "text": "A broker can create a new client with name, ID number, and contact details, and the client is persisted."
+    },
+    {
+      "id": "AC-2",
+      "text": "A broker can generate a quote for a motor product against an existing client and see a premium."
+    },
+    {
+      "id": "AC-3",
+      "text": "A broker can bind a quote into an active policy, and the policy status shows as active."
+    },
+    {
+      "id": "AC-4",
+      "text": "A broker can capture a mid-term amendment that changes the sum insured, and the premium recalculates."
+    },
+    {
+      "id": "AC-5",
+      "text": "A broker can lodge a claim against an active policy, and the claim appears with a reference number."
+    },
+    {
+      "id": "AC-6",
+      "text": "When a facultative reinsurance percentage is entered, the value is saved and reflected on the policy, not silently dropped."
+    }
+  ]
+}

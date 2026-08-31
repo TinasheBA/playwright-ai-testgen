@@ -1,0 +1,27 @@
+{
+  "name": "playwright-ai-testgen",
+  "version": "0.1.0",
+  "description": "Generate Playwright tests from acceptance criteria with an LLM, then automatically evaluate the output for coverage, hallucinated locators, and compilation.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "generate": "tsx src/index.ts",
+    "demo": "tsx src/index.ts examples/criteria/policy-lifecycle.json examples/page-registry.json out",
+    "dry-run": "tsx src/dry-run.ts",
+    "dry-run:good": "tsx src/dry-run.ts examples/mock-good.json",
+    "dry-run:bad": "tsx src/dry-run.ts examples/mock-bad.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "dotenv": "^16.4.0",
+    "typescript": "^5.6.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "vitest": "^2.1.0"
+  }
+}

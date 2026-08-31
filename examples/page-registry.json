@@ -1,0 +1,17 @@
+[
+  "getByTestId('client-name')",
+  "getByTestId('client-id-number')",
+  "getByTestId('client-contact')",
+  "getByTestId('save-client')",
+  "getByRole('button', { name: 'New Quote' })",
+  "getByTestId('product-select')",
+  "getByTestId('premium-amount')",
+  "getByRole('button', { name: 'Bind Policy' })",
+  "getByTestId('policy-status')",
+  "getByTestId('sum-insured')",
+  "getByRole('button', { name: 'Recalculate' })",
+  "getByRole('button', { name: 'Lodge Claim' })",
+  "getByTestId('claim-reference')",
+  "getByTestId('reinsurance-percentage')",
+  "getByTestId('reinsurance-saved-value')"
+]
