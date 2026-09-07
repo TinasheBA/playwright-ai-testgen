@@ -12,6 +12,7 @@
     "dry-run": "tsx src/dry-run.ts",
     "dry-run:good": "tsx src/dry-run.ts examples/mock-good.json",
     "dry-run:bad": "tsx src/dry-run.ts examples/mock-bad.json",
+    "dry-run:hollow": "tsx src/dry-run.ts examples/mock-hollow.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

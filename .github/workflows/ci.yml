@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -19,7 +26,27 @@ jobs:
         run: npm run typecheck
       - name: Run eval unit tests
         run: npm test
-      - name: Dry-run eval pipeline (good mock)
+      - name: Dry-run eval pipeline (good mock, must pass)
         run: npm run dry-run:good
-      - name: Dry-run eval pipeline (bad mock — should fail)
-        run: npm run dry-run:bad || true
+      - name: Dry-run eval pipeline (bad mock, must fail)
+        # This step exists to prove the harness rejects bad output, so it has to
+        # assert the failure rather than tolerate it. `|| true` made the step pass
+        # whether the pipeline exited 1 or 0, which meant the one check that proves
+        # the gate works could not fail: break the coverage check so it always
+        # passes and CI stayed green.
+        run: |
+          if npm run dry-run:bad; then
+            echo "::error::dry-run:bad exited 0. The eval harness passed a mock it is supposed to reject."
+            exit 1
+          fi
+          echo "dry-run:bad exited non-zero, as expected."
+      - name: Dry-run eval pipeline (hollow mock, must fail)
+        # Six correctly titled tests, every criterion claimed, no assertions
+        # anywhere. This is the generation that scored a clean sweep before the
+        # coverage check started reading the generated code.
+        run: |
+          if npm run dry-run:hollow; then
+            echo "::error::dry-run:hollow exited 0. A spec with no assertions scored a pass."
+            exit 1
+          fi
+          echo "dry-run:hollow exited non-zero, as expected."

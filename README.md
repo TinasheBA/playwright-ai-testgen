@@ -25,10 +25,40 @@ Feed it a feature's acceptance criteria and a registry of valid page locators. I
 | Check | What it catches |
 |-------|----------------|
 | **compile** | Does the generated spec transpile without syntax errors? |
-| **coverage** | Is every acceptance criterion covered by at least one test? |
+| **coverage** | Does a real test block, with a real assertion, exist for every acceptance criterion? |
 | **hallucination** | Does the code reference any locator that isn't in the registry? |
 
-The hallucination check inspects the **actual generated code** rather than trusting the model's own report of what it used. That's the one that earns its place.
+Every check reads the **actual generated code**, never the model's own report of what it did. That is the whole design, and getting it wrong is easy: the coverage check used to read the `coversCriteria` field from the model's manifest, which meant the check advertised as catching a skipped requirement was built on the model's claim not to have skipped it. It now links a requirement to code through the criterion id in the test title, and requires that block to assert something. The manifest is still read, but only to report where the model's account disagrees with its output.
+
+## The check that had to be rewritten
+
+Here is the generation that beat the old harness. Every criterion claimed in the manifest, every test titled correctly, the spec transpiles, and no locators referenced so nothing looks invented:
+
+```ts
+test.describe('Short-term insurance policy lifecycle', () => {
+  test('AC-1: broker creates a new client and it is persisted', async ({ page }) => {
+    // TODO
+  });
+  // ...five more, same shape
+});
+```
+
+Six tests, full coverage, no hallucinations, not one assertion. Three green checks over a file that protects nothing. It now reads:
+
+```
+Overall:      67%
+
+[PASS] compile (100%)
+       Generated spec transpiles without syntax errors.
+[FAIL] coverage (0%)
+       Covered 0 of 6 criteria (0%), verified against 6 test block(s) in the generated code.
+       Named by a test block that asserts nothing, so not counted: AC-1, AC-2, AC-3, AC-4, AC-5, AC-6
+       Manifest claims these are covered but the code does not bear it out: AC-1, AC-2, AC-3, AC-4, AC-5, AC-6
+[PASS] hallucination (100%)
+       No locators referenced at all, so nothing here was verified.
+```
+
+That generation is committed as `examples/mock-hollow.json`, and CI requires it to fail. A gate with no test proving it rejects something is a gate you are trusting on faith.
 
 ## Why the hallucination check matters
 
@@ -108,9 +138,14 @@ The generated spec and a full `eval-report.json` land in the output folder. The 
 You can validate the eval pipeline without calling the Anthropic API by feeding it a mock generation result:
 
 ```bash
-npm run dry-run:good   # should pass all 3 checks
-npm run dry-run:bad    # should fail coverage + hallucination
+npm run dry-run:good     # passes all 3 checks
+npm run dry-run:bad      # fails coverage (a missing criterion) + hallucination
+npm run dry-run:hollow   # fails coverage (correct titles, no assertions)
 ```
+
+CI runs all three and asserts the exit code of each, including that the two bad ones
+actually fail. The bad-mock step used to end in `|| true`, which meant the step proving
+the harness rejects bad output passed whether it rejected anything or not.
 
 The dry-run reads a mock JSON file (what the API *would* return) and runs the full eval pipeline — compile check, coverage check, hallucination check, report rendering, and exit code. This is what CI uses to prove the pipeline works on every push.
 
@@ -132,9 +167,20 @@ examples/
   page-registry.json            sample locator registry
   mock-good.json                mock result that passes all checks
   mock-bad.json                 mock result that fails coverage + hallucination
+  mock-hollow.json              correct titles, zero assertions; must fail coverage
 ```
 
 The model name is read from `TESTGEN_MODEL` (default `claude-sonnet-5`), so switching model versions is a config change rather than a code edit.
+
+## Known limits
+
+Worth reading before you trust a score.
+
+The coverage check counts *an* assertion, not a good one. A test asserting `expect(true).toBe(true)` clears the bar. Telling a meaningful assertion from a trivial one needs a graded eval, which is the next thing below.
+
+The hallucination check ignores two things rather than guessing at them. A role locator with no accessible name (`getByRole('checkbox')`) carries no identity to check against a registry. A locator built from a regex (`getByText(/save/i)`) is a pattern, and matching patterns against a registry of literals is a different job.
+
+The compile check is a transpile pass, so it catches syntax errors and not type errors. A call to a method that does not exist on `Locator` gets through.
 
 ## What I'd add next
 

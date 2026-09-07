@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { validateGenerationResult } from "../types.js";
 import type { CriteriaDocument, GenerationResult } from "../types.js";
 
 // Model is set via env so switching versions is a config change, not a code change.
@@ -10,6 +11,9 @@ Rules:
 - Use only locators that exist in the provided page registry. Never invent selectors.
 - Prefer role-based and test-id locators (getByRole, getByTestId) over brittle CSS where the registry allows it.
 - Every acceptance criterion must be covered by at least one test.
+- Title every test with the id of the criterion it covers, first, exactly as given:
+  "AC-1: broker creates a new client". The eval harness links requirements to code
+  through that prefix, so a test without it does not count as covering anything.
 - Each test must assert a real, observable outcome. Do not write tests that pass trivially.
 
 Return ONLY a JSON object, no prose, no markdown fences, matching exactly:
@@ -67,19 +71,31 @@ export async function generateTests(
     );
   }
 
+  // A truncated response is malformed JSON, and "Unexpected end of JSON input"
+  // sends you hunting for a parser bug instead of raising max_tokens.
+  if (message.stop_reason === "max_tokens") {
+    throw new Error(
+      `Model output was cut off at the max_tokens limit (${message.usage?.output_tokens ?? "?"} ` +
+        `output tokens), so the JSON is incomplete. Raise max_tokens in generateTests.ts, or ` +
+        `split the criteria into smaller features.`
+    );
+  }
+
   const textBlock = message.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") {
     throw new Error("Model returned no text content");
   }
 
-  let parsed: GenerationResult;
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(stripFences(textBlock.text)) as GenerationResult;
-  } catch (err) {
+    parsed = JSON.parse(stripFences(textBlock.text));
+  } catch {
     throw new Error(
       `Failed to parse model output as JSON. Raw output:\n${textBlock.text}`
     );
   }
 
-  return parsed;
+  // Not trusting model output is the point of this project, so the shape gets
+  // validated rather than cast. See validateGenerationResult in types.ts.
+  return validateGenerationResult(parsed);
 }

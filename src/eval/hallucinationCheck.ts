@@ -13,27 +13,46 @@ import type { GenerationResult, CheckResult } from "../types.js";
  * Both the registry entries and the generated code are reduced to canonical
  * keys (e.g. "testid:save-client", "role:button:Bind Policy") so the registry
  * can be written as normal, readable Playwright locators.
+ *
+ * Two things this does not catch, both worth knowing before you trust the score.
+ * A role locator with no accessible name (`getByRole('checkbox')`) carries no
+ * identity to check, so it is ignored rather than guessed at. And a locator
+ * built from a regex (`getByText(/save/i)`) is not extracted, because matching a
+ * pattern against a registry of literals is a different job than this one.
  */
+
+/**
+ * Getters that take a single string and identify an element by that string.
+ * One pattern rather than one per getter, so adding a getter is adding a name.
+ */
+const SINGLE_STRING_GETTER =
+  /getBy(TestId|Label|Placeholder|Text|Title|AltText)\(\s*['"`]([^'"`]+)['"`]/g;
+
+/** Role locators carry identity in the accessible name, not the role alone. */
+const ROLE_WITH_NAME =
+  /getByRole\(\s*['"`]([^'"`]+)['"`]\s*,\s*\{[^}]*?name:\s*['"`]([^'"`]+)['"`]/g;
+
+const CSS_SELECTOR = /\.locator\(\s*['"`]([^'"`]+)['"`]/g;
+
+/** Strip comments so a locator named in prose is not counted as used. */
+function stripComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
 
 /** Extract canonical locator keys from any text (registry entry or spec code). */
 export function extractLocatorKeys(text: string): string[] {
+  const source = stripComments(text);
   const keys = new Set<string>();
 
-  const testId = /getByTestId\(\s*['"`]([^'"`]+)['"`]/g;
-  const label = /getByLabel\(\s*['"`]([^'"`]+)['"`]/g;
-  const placeholder = /getByPlaceholder\(\s*['"`]([^'"`]+)['"`]/g;
-  const css = /\.locator\(\s*['"`]([^'"`]+)['"`]/g;
-  // Role locators carry identity in the accessible name, not the role alone.
-  const roleWithName =
-    /getByRole\(\s*['"`]([^'"`]+)['"`]\s*,\s*\{[^}]*?name:\s*['"`]([^'"`]+)['"`]/g;
-
-  let m: RegExpExecArray | null;
-  while ((m = testId.exec(text)) !== null) keys.add(`testid:${m[1]}`);
-  while ((m = label.exec(text)) !== null) keys.add(`label:${m[1]}`);
-  while ((m = placeholder.exec(text)) !== null) keys.add(`placeholder:${m[1]}`);
-  while ((m = css.exec(text)) !== null) keys.add(`css:${m[1]}`);
-  while ((m = roleWithName.exec(text)) !== null)
-    keys.add(`role:${m[1]}:${m[2]}`);
+  for (const [, kind, value] of source.matchAll(SINGLE_STRING_GETTER)) {
+    keys.add(`${kind.toLowerCase()}:${value}`);
+  }
+  for (const [, role, name] of source.matchAll(ROLE_WITH_NAME)) {
+    keys.add(`role:${role}:${name}`);
+  }
+  for (const [, selector] of source.matchAll(CSS_SELECTOR)) {
+    keys.add(`css:${selector}`);
+  }
 
   return [...keys];
 }
@@ -42,23 +61,22 @@ export function hallucinationCheck(
   result: GenerationResult,
   pageRegistry: string[]
 ): CheckResult {
-  // Build the set of allowed keys from the registry.
-  const allowed = new Set<string>();
-  for (const entry of pageRegistry) {
-    for (const key of extractLocatorKeys(entry)) allowed.add(key);
-  }
-
+  const allowed = new Set(pageRegistry.flatMap((entry) => extractLocatorKeys(entry)));
   const used = extractLocatorKeys(result.specCode);
   const hallucinated = used.filter((key) => !allowed.has(key));
   const score = used.length === 0 ? 1 : 1 - hallucinated.length / used.length;
 
   const details: string[] = [
-    `Locators referenced: ${used.length}. In registry: ${
-      used.length - hallucinated.length
-    }.`,
+    `Locators referenced: ${used.length}. In registry: ${used.length - hallucinated.length}.`,
   ];
   if (hallucinated.length > 0) {
     details.push(`Hallucinated (not in registry): ${hallucinated.join(", ")}`);
+  }
+  if (used.length === 0) {
+    // Scoring 1 for "referenced nothing" is only defensible because the coverage
+    // check refuses a spec whose test blocks contain no assertions. Say so in the
+    // report rather than presenting a clean sweep with no evidence behind it.
+    details.push("No locators referenced at all, so nothing here was verified.");
   }
 
   return {
