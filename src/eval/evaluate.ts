@@ -6,6 +6,7 @@ import type {
 import { coverageCheck } from "./coverageCheck.js";
 import { hallucinationCheck } from "./hallucinationCheck.js";
 import { compileCheck } from "./compileCheck.js";
+import { assertionQualityCheck } from "./assertionQualityCheck.js";
 
 /**
  * Run every eval check against a generation result and assemble a report.
@@ -21,6 +22,7 @@ export function evaluate(
     compileCheck(result),
     coverageCheck(doc, result),
     hallucinationCheck(result, pageRegistry),
+    assertionQualityCheck(doc, result),
   ];
 
   const overallScore =

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { coverageCheck, findTestBlocks } from "../coverageCheck.js";
 import { hallucinationCheck, extractLocatorKeys } from "../hallucinationCheck.js";
 import { compileCheck } from "../compileCheck.js";
+import { assertionQualityCheck } from "../assertionQualityCheck.js";
 import { validateGenerationResult } from "../../types.js";
 import type { CriteriaDocument, GenerationResult } from "../../types.js";
 
@@ -265,5 +266,79 @@ describe("validateGenerationResult", () => {
       expect(message).toContain("specCode");
       expect(message).toContain("tests");
     }
+  });
+});
+
+describe("assertionQualityCheck", () => {
+  const spec = (...bodies: string[]) =>
+    `import { test, expect } from '@playwright/test';\n` +
+    bodies
+      .map(
+        (body, i) =>
+          `test('AC-${i + 1}: thing ${i + 1}', async ({ page }) => {${body}});`
+      )
+      .join("\n");
+
+  const gen = (specCode: string): GenerationResult => ({
+    specFileName: "x.spec.ts",
+    specCode,
+    tests: [],
+  });
+
+  it("passes when each test asserts something of its own", () => {
+    const r = assertionQualityCheck(
+      doc,
+      gen(
+        spec(
+          `await expect(page.getByTestId('client-name')).toHaveValue('x');`,
+          `await expect(page.getByTestId('save-client')).toHaveText('Saved');`
+        )
+      )
+    );
+    expect(r.passed).toBe(true);
+    expect(r.score).toBe(1);
+  });
+
+  it("fails two tests covering different criteria that assert the identical thing", () => {
+    const same = `await expect(page.getByTestId('save-client')).toHaveText('Saved');`;
+    const r = assertionQualityCheck(doc, gen(spec(same, same)));
+    expect(r.passed).toBe(false);
+    expect(r.score).toBe(0);
+    expect(r.details.join(" ")).toContain("Identical assertions");
+  });
+
+  it("does not compare tests that assert nothing, which coverage already reports", () => {
+    const r = assertionQualityCheck(doc, gen(spec(`// TODO`, `// TODO`)));
+    expect(r.passed).toBe(true);
+    expect(r.details.join(" ")).not.toContain("Identical assertions");
+  });
+
+  it("reports an existence-only assertion as weak without failing", () => {
+    const r = assertionQualityCheck(
+      doc,
+      gen(
+        spec(
+          `await expect(page.getByTestId('client-name')).toBeVisible();`,
+          `await expect(page.getByTestId('save-client')).toHaveText('Saved');`
+        )
+      )
+    );
+    expect(r.passed).toBe(true);
+    expect(r.details.join(" ")).toContain("Existence-only");
+  });
+
+  it("counts a distinguishing assertion alongside an existence-only one", () => {
+    const r = assertionQualityCheck(
+      doc,
+      gen(
+        spec(
+          `await expect(page.getByTestId('client-name')).toHaveValue('x');
+           await expect(page.getByTestId('client-name')).toBeVisible();`,
+          `await expect(page.getByTestId('save-client')).toHaveText('Saved');`
+        )
+      )
+    );
+    expect(r.passed).toBe(true);
+    expect(r.details.join(" ")).not.toContain("Existence-only");
   });
 });

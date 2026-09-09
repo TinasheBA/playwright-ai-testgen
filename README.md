@@ -20,13 +20,14 @@ Requires **Node 20+** and an [Anthropic API key](https://console.anthropic.com/)
 
 ## What it does
 
-Feed it a feature's acceptance criteria and a registry of valid page locators. It calls the Anthropic API to write a Playwright spec in TypeScript, then runs three checks against the result:
+Feed it a feature's acceptance criteria and a registry of valid page locators. It calls the Anthropic API to write a Playwright spec in TypeScript, then runs four checks against the result:
 
 | Check | What it catches |
 |-------|----------------|
 | **compile** | Does the generated spec transpile without syntax errors? |
 | **coverage** | Does a real test block, with a real assertion, exist for every acceptance criterion? |
 | **hallucination** | Does the code reference any locator that isn't in the registry? |
+| **assertion-quality** | Is each test verifying its own criterion, or just that the page rendered? |
 
 Every check reads the **actual generated code**, never the model's own report of what it did. That is the whole design, and getting it wrong is easy: the coverage check used to read the `coversCriteria` field from the model's manifest, which meant the check advertised as catching a skipped requirement was built on the model's claim not to have skipped it. It now links a requirement to code through the criterion id in the test title, and requires that block to assert something. The manifest is still read, but only to report where the model's account disagrees with its output.
 
@@ -79,6 +80,36 @@ Overall:      98%
 ```
 
 Coverage and compile both pass. On their own they would have waved this through. The one bad locator on the reinsurance test would have failed the moment it hit the real application, and it would have looked like an application defect, not a generation defect. The harness catches it in about a second, before it costs anyone a debugging session.
+
+## Why the assertion quality check matters
+
+Coverage refuses to count a test block with no assertion in it, so a spec of empty tests gets caught. What still gets through is a test that *does* assert, on nothing that could tell right from wrong.
+
+The bundled login example is the smallest demonstration of it. Three criteria against [saucedemo.com](https://www.saucedemo.com/), with two versions of the suite:
+
+```bash
+npm run dry-run:login-good     # 100%, exit 0
+npm run dry-run:login-hollow   # fails assertion-quality, exit 1
+```
+
+The hollow version compiles, names every criterion in a test title, asserts in every test, and uses only locators that exist. It clears the first three checks outright:
+
+```
+[PASS] compile (100%)
+[PASS] coverage (100%)
+[PASS] hallucination (100%)
+[FAIL] assertion-quality (33%)
+       1 of 3 tests assert something of their own (33%).
+       Identical assertions for different criteria: "AC-2: the wrong password shows
+       an error" and "AC-3: a locked out user is told the account is locked"
+       Existence-only assertions, so the criterion is not really verified: ...
+```
+
+Every assertion in it is `toBeVisible()`. The tests for a wrong password and a locked out account assert the identical thing: an error box is on screen. Neither reads it. Show a locked out user the wrong-password message and that suite still reports green.
+
+So the check applies two rules. Two tests covering different criteria with the identical assertion signature fail it, because the same assertion cannot be the evidence for two different requirements. A test whose assertions are all existence-only is reported as weak without failing, since a criterion genuinely about whether something is shown is legitimately verified by `toBeVisible()`, and failing on that would train people to ignore the check.
+
+Its limit is worth stating plainly: it cannot tell whether an assertion is *correct* for its criterion, only that it is distinct and more than existence. A test asserting the wrong error message with `toContainText` passes. That needs an LLM-graded pass, which needs an API key and so cannot run in CI or in the dry-run.
 
 ## How it works
 
@@ -138,16 +169,18 @@ The generated spec and a full `eval-report.json` land in the output folder. The 
 You can validate the eval pipeline without calling the Anthropic API by feeding it a mock generation result:
 
 ```bash
-npm run dry-run:good     # passes all 3 checks
-npm run dry-run:bad      # fails coverage (a missing criterion) + hallucination
-npm run dry-run:hollow   # fails coverage (correct titles, no assertions)
+npm run dry-run:good           # passes all 4 checks
+npm run dry-run:bad            # fails coverage (a missing criterion) + hallucination
+npm run dry-run:hollow         # fails coverage (correct titles, no assertions)
+npm run dry-run:login-good     # minimal login example, passes
+npm run dry-run:login-hollow   # minimal login example, fails assertion-quality
 ```
 
-CI runs all three and asserts the exit code of each, including that the two bad ones
+CI runs all five and asserts the exit code of each, including that the three bad ones
 actually fail. The bad-mock step used to end in `|| true`, which meant the step proving
 the harness rejects bad output passed whether it rejected anything or not.
 
-The dry-run reads a mock JSON file (what the API *would* return) and runs the full eval pipeline — compile check, coverage check, hallucination check, report rendering, and exit code. This is what CI uses to prove the pipeline works on every push.
+The dry-run reads a mock JSON file (what the API *would* return) and runs the full eval pipeline: all four checks, report rendering, and exit code. This is what CI uses to prove the pipeline works on every push.
 
 ## Project structure
 
@@ -157,6 +190,7 @@ src/
   eval/compileCheck.ts          TypeScript transpile check
   eval/coverageCheck.ts         criteria coverage
   eval/hallucinationCheck.ts    locator verification against the registry
+  eval/assertionQualityCheck.ts are the assertions distinct and worth anything
   eval/evaluate.ts              runs the checks, assembles the report
   eval/__tests__/               vitest unit tests for all checks
   report/report.ts              console summary
@@ -185,8 +219,7 @@ The compile check is a transpile pass, so it catches syntax errors and not type 
 ## What I'd add next
 
 - **Full type-check** — swap the compile check from a transpile pass to `tsc --noEmit` once `@playwright/test` is installed, so type errors are caught too.
-- **Meaningful assertion check** — LLM-graded evaluation: does each test assert on real behaviour, or does it pass trivially? That is the harder half of the problem.
-- **Duplicate-test detector** — models like to generate near-identical tests for adjacent criteria.
+- **Semantic assertion grading** — LLM-graded: is each assertion *correct* for its criterion, not merely distinct and non-trivial? The static check catches a test that asserts nothing of its own; it cannot catch one asserting the wrong thing.
 
 ## Why I built this
 

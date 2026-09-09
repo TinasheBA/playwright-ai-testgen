@@ -1,12 +1,42 @@
 {
   "specFileName": "policy-lifecycle.spec.ts",
-  "specCode": "import { test, expect } from '@playwright/test';\n\ntest.describe('Short-term insurance policy lifecycle', () => {\n  test('AC-1: broker creates a new client and it is persisted', async ({ page }) => {\n    await page.getByRole('button', { name: 'New Quote' }).click();\n    await page.getByTestId('client-name').fill('John Smith');\n    await page.getByTestId('client-id-number').fill('9001011234567');\n    await page.getByTestId('client-contact').fill('john@example.com');\n    await page.getByTestId('save-client').click();\n    await expect(page.getByTestId('client-name')).toHaveValue('John Smith');\n  });\n\n  test('AC-2: broker generates a quote and sees a premium', async ({ page }) => {\n    await page.getByRole('button', { name: 'New Quote' }).click();\n    await page.getByTestId('product-select').selectOption('motor');\n    await page.getByRole('button', { name: 'Recalculate' }).click();\n    await expect(page.getByTestId('premium-amount')).not.toBeEmpty();\n  });\n\n  test('AC-3: broker binds a quote into an active policy', async ({ page }) => {\n    await page.getByRole('button', { name: 'Bind Policy' }).click();\n    await expect(page.getByTestId('policy-status')).toHaveText('Active');\n  });\n\n  test('AC-4: broker captures mid-term amendment and premium recalculates', async ({ page }) => {\n    await page.getByTestId('sum-insured').fill('500000');\n    await page.getByRole('button', { name: 'Recalculate' }).click();\n    await expect(page.getByTestId('premium-amount')).not.toBeEmpty();\n  });\n\n  test('AC-5: broker lodges a claim and sees a reference number', async ({ page }) => {\n    await page.getByRole('button', { name: 'Lodge Claim' }).click();\n    await expect(page.getByTestId('claim-reference')).not.toBeEmpty();\n  });\n\n  test('AC-6: facultative reinsurance percentage is saved and reflected', async ({ page }) => {\n    await page.getByTestId('reinsurance-percentage').fill('25');\n    await page.getByRole('button', { name: 'Recalculate' }).click();\n    await expect(page.getByTestId('reinsurance-saved-value')).toHaveText('25%');\n  });\n});",
+  "specCode": "import { test, expect } from '@playwright/test';\n\ntest.describe('Short-term insurance policy lifecycle', () => {\n  test('AC-1: broker creates a new client and it is persisted', async ({ page }) => {\n    await page.getByRole('button', { name: 'New Quote' }).click();\n    await page.getByTestId('client-name').fill('John Smith');\n    await page.getByTestId('client-id-number').fill('9001011234567');\n    await page.getByTestId('client-contact').fill('john@example.com');\n    await page.getByTestId('save-client').click();\n    await expect(page.getByTestId('client-name')).toHaveValue('John Smith');\n  });\n\n  test('AC-2: broker generates a quote and sees a premium', async ({ page }) => {\n    await page.getByRole('button', { name: 'New Quote' }).click();\n    await page.getByTestId('product-select').selectOption('motor');\n    await page.getByRole('button', { name: 'Recalculate' }).click();\n    await expect(page.getByTestId('premium-amount')).not.toBeEmpty();\n  });\n\n  test('AC-3: broker binds a quote into an active policy', async ({ page }) => {\n    await page.getByRole('button', { name: 'Bind Policy' }).click();\n    await expect(page.getByTestId('policy-status')).toHaveText('Active');\n  });\n\n  test('AC-4: broker captures mid-term amendment and premium recalculates', async ({ page }) => {\n    await page.getByTestId('sum-insured').fill('500000');\n    await page.getByRole('button', { name: 'Recalculate' }).click();\n    await expect(page.getByTestId('sum-insured')).toHaveValue('500000');\n    await expect(page.getByTestId('premium-amount')).not.toBeEmpty();\n  });\n\n  test('AC-5: broker lodges a claim and sees a reference number', async ({ page }) => {\n    await page.getByRole('button', { name: 'Lodge Claim' }).click();\n    await expect(page.getByTestId('claim-reference')).not.toBeEmpty();\n  });\n\n  test('AC-6: facultative reinsurance percentage is saved and reflected', async ({ page }) => {\n    await page.getByTestId('reinsurance-percentage').fill('25');\n    await page.getByRole('button', { name: 'Recalculate' }).click();\n    await expect(page.getByTestId('reinsurance-saved-value')).toHaveText('25%');\n  });\n});",
   "tests": [
-    { "title": "broker creates a new client and it is persisted", "coversCriteria": ["AC-1"] },
-    { "title": "broker generates a quote and sees a premium", "coversCriteria": ["AC-2"] },
-    { "title": "broker binds a quote into an active policy", "coversCriteria": ["AC-3"] },
-    { "title": "broker captures mid-term amendment and premium recalculates", "coversCriteria": ["AC-4"] },
-    { "title": "broker lodges a claim and sees a reference number", "coversCriteria": ["AC-5"] },
-    { "title": "facultative reinsurance percentage is saved and reflected", "coversCriteria": ["AC-6"] }
+    {
+      "title": "broker creates a new client and it is persisted",
+      "coversCriteria": [
+        "AC-1"
+      ]
+    },
+    {
+      "title": "broker generates a quote and sees a premium",
+      "coversCriteria": [
+        "AC-2"
+      ]
+    },
+    {
+      "title": "broker binds a quote into an active policy",
+      "coversCriteria": [
+        "AC-3"
+      ]
+    },
+    {
+      "title": "broker captures mid-term amendment and premium recalculates",
+      "coversCriteria": [
+        "AC-4"
+      ]
+    },
+    {
+      "title": "broker lodges a claim and sees a reference number",
+      "coversCriteria": [
+        "AC-5"
+      ]
+    },
+    {
+      "title": "facultative reinsurance percentage is saved and reflected",
+      "coversCriteria": [
+        "AC-6"
+      ]
+    }
   ]
 }

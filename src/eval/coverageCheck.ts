@@ -29,7 +29,7 @@ function stripComments(code: string): string {
   return code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 }
 
-export type TestBlock = { title: string; asserts: boolean };
+export type TestBlock = { title: string; body: string; asserts: boolean };
 
 /**
  * Test blocks found in the generated code, in source order.
@@ -50,10 +50,10 @@ export function findTestBlocks(specCode: string): TestBlock[] {
     starts.push({ title: match[1], index: match.index });
   }
 
-  return starts.map((start, i) => ({
-    title: start.title,
-    asserts: /\bexpect\s*\(/.test(code.slice(start.index, starts[i + 1]?.index ?? code.length)),
-  }));
+  return starts.map((start, i) => {
+    const body = code.slice(start.index, starts[i + 1]?.index ?? code.length);
+    return { title: start.title, body, asserts: /\bexpect\s*\(/.test(body) };
+  });
 }
 
 export function coverageCheck(doc: CriteriaDocument, result: GenerationResult): CheckResult {
