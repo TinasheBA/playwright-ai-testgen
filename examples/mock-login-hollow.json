@@ -1,0 +1,24 @@
+{
+  "specFileName": "login.spec.ts",
+  "specCode": "import { test, expect } from '@playwright/test';\n\ntest.describe('Saucedemo login', () => {\n  test('AC-1: valid credentials land on the products page', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await page.locator('#user-name').fill('standard_user');\n    await page.locator('#password').fill('secret_sauce');\n    await page.locator('#login-button').click();\n    await expect(page.locator('.inventory_list')).toBeVisible();\n  });\n\n  test('AC-2: the wrong password shows an error', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await page.locator('#user-name').fill('standard_user');\n    await page.locator('#password').fill('definitely_wrong');\n    await page.locator('#login-button').click();\n    await expect(page.locator('.error-message-container')).toBeVisible();\n  });\n\n  test('AC-3: a locked out user is told the account is locked', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await page.locator('#user-name').fill('locked_out_user');\n    await page.locator('#password').fill('secret_sauce');\n    await page.locator('#login-button').click();\n    await expect(page.locator('.error-message-container')).toBeVisible();\n  });\n});\n",
+  "tests": [
+    {
+      "title": "AC-1: valid credentials land on the products page",
+      "coversCriteria": [
+        "AC-1"
+      ]
+    },
+    {
+      "title": "AC-2: the wrong password shows an error",
+      "coversCriteria": [
+        "AC-2"
+      ]
+    },
+    {
+      "title": "AC-3: a locked out user is told the account is locked",
+      "coversCriteria": [
+        "AC-3"
+      ]
+    }
+  ]
+}

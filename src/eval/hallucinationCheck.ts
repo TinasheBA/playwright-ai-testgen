@@ -32,7 +32,8 @@ const SINGLE_STRING_GETTER =
 const ROLE_WITH_NAME =
   /getByRole\(\s*['"`]([^'"`]+)['"`]\s*,\s*\{[^}]*?name:\s*['"`]([^'"`]+)['"`]/g;
 
-const CSS_SELECTOR = /\.locator\(\s*['"`]([^'"`]+)['"`]/g;
+/** Leading dot optional: registry entries are bare, generated code chains off `page`. */
+const CSS_SELECTOR = /\.?locator\(\s*['"`]([^'"`]+)['"`]/g;
 
 /** Strip comments so a locator named in prose is not counted as used. */
 function stripComments(text: string): string {

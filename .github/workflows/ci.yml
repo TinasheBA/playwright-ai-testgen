@@ -50,3 +50,16 @@ jobs:
             exit 1
           fi
           echo "dry-run:hollow exited non-zero, as expected."
+      - name: Dry-run login example (good, must pass)
+        run: npm run dry-run:login-good
+      - name: Dry-run login example (hollow, must fail assertion-quality)
+        # Three criteria, three titled tests, an assertion in every one, only real
+        # locators. It clears compile, coverage and hallucination. Every assertion
+        # is toBeVisible(), and two different criteria assert the identical thing,
+        # which is what assertion-quality exists to catch.
+        run: |
+          if npm run dry-run:login-hollow; then
+            echo "::error::dry-run:login-hollow exited 0. A suite that verifies nothing scored a pass."
+            exit 1
+          fi
+          echo "dry-run:login-hollow exited non-zero, as expected."
