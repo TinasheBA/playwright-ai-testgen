@@ -14,7 +14,9 @@
     "dry-run:bad": "tsx src/dry-run.ts examples/mock-bad.json",
     "dry-run:hollow": "tsx src/dry-run.ts examples/mock-hollow.json",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dry-run:login-good": "tsx src/dry-run.ts examples/mock-login-good.json examples/criteria/login.json examples/page-registry-login.json",
+    "dry-run:login-hollow": "tsx src/dry-run.ts examples/mock-login-hollow.json examples/criteria/login.json examples/page-registry-login.json"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",

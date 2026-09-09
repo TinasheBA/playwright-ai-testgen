@@ -1,0 +1,17 @@
+{
+  "feature": "Saucedemo login",
+  "criteria": [
+    {
+      "id": "AC-1",
+      "text": "A user with valid credentials logs in and lands on the products page."
+    },
+    {
+      "id": "AC-2",
+      "text": "A user with the wrong password sees an error and stays on the login page."
+    },
+    {
+      "id": "AC-3",
+      "text": "A locked out user is told that their account is locked."
+    }
+  ]
+}
